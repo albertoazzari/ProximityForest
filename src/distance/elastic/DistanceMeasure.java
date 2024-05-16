@@ -1,6 +1,7 @@
 package distance.elastic;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -285,6 +286,10 @@ public class DistanceMeasure {
 
 		for (int i = 0; i < exemplars.length; i++) {
 			double[] exemplar = exemplars[i];	//TODO indices must match
+
+			if (Arrays.equals(exemplar, query)) {
+				exemplar = query;
+			}
 
 			if (AppContext.config_skip_distance_when_exemplar_matches_query && exemplar == query) {
 				return i;

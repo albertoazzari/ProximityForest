@@ -1,5 +1,6 @@
 package trees;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import core.AppContext;
@@ -21,13 +22,22 @@ public class Splitter{
 	protected double[][] exemplars;
 	
 	protected DistanceMeasure temp_distance_measure;
-	protected double[][] temp_exemplars;	
+	private double[][] temp_exemplars;
+	
+	protected int start;
+	protected int len;
 	
 	ListDataset[] best_split = null;	
 	ProximityTree.Node node;
 	
 	public Splitter(ProximityTree.Node node) throws Exception {
-		this.node = node;	
+		this.node = node;
+	}
+
+	public Splitter(ProximityTree.Node node, int start, int len) throws Exception {
+		this.node = node;
+		this.start = start;
+		this.len = len;	
 	}
 	
 	public ListDataset[] split_data(Dataset sample, Map<Integer, ListDataset> data_per_class) throws Exception {
@@ -35,24 +45,23 @@ public class Splitter{
 		ListDataset[] splits = new ListDataset[sample.get_num_classes()];
 		temp_exemplars = new double[sample.get_num_classes()][];
 
+
 		int branch = 0;
 		for (Map.Entry<Integer, ListDataset> entry : data_per_class.entrySet()) {
 			int r = AppContext.getRand().nextInt(entry.getValue().size());
 			
-			splits[branch] = new ListDataset(sample.size(), sample.length());
+			splits[branch] = new ListDataset(sample.size(), len);
 			//use key just in case iteration order is not consistent
-			temp_exemplars[branch] = entry.getValue().get_series(r);
+			temp_exemplars[branch] = Arrays.copyOfRange(entry.getValue().get_series(r), this.start, this.start+this.len);
 			branch++;
 		}
 		
 		int sample_size = sample.size();
 		int closest_branch = -1;
 		for (int j = 0; j < sample_size; j++) {
-			closest_branch = this.find_closest_branch(sample.get_series(j), 
+			closest_branch = this.find_closest_branch(Arrays.copyOfRange(sample.get_series(j), this.start, this.start+this.len), 
 					temp_distance_measure, temp_exemplars);
-			if (closest_branch == -1) {
-				assert false;
-			}
+			assert closest_branch == -1;
 			splits[closest_branch].add(sample.get_class(j), sample.get_series(j));
 		}
 
@@ -64,7 +73,7 @@ public class Splitter{
 	}	
 	
 	public int find_closest_branch(double[] query) throws Exception{
-		return this.distance_measure.find_closest_node(query, exemplars, true);
+		return this.distance_measure.find_closest_node(Arrays.copyOfRange(query, this.start, this.start+this.len), exemplars, true);
 	}		
 	
 	public Dataset[] getBestSplits() {

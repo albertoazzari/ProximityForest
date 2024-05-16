@@ -14,7 +14,7 @@ import distance.elastic.DistanceMeasure;
  *
  */
 
-public class ProximityTree{
+public class ProximityTree {
 	protected int forest_id;	
 	private int tree_id;
 	protected Node root;
@@ -35,7 +35,7 @@ public class ProximityTree{
 	public Node getRootNode() {
 		return this.root;
 	}
-	
+
 	public void train(Dataset data) throws Exception {
 		
 		
@@ -48,16 +48,20 @@ public class ProximityTree{
 		this.root = new Node(null, null, ++node_counter, this);
 		this.root.train(data);
 	}
-	
-	public Integer predict(double[] query) throws Exception {
-		Node node = this.root;
 
-		while(!node.is_leaf()) {
-			node = node.children[node.splitter.find_closest_branch(query)];
+	public Integer[] predict(Dataset data) throws Exception {
+		Integer[] predictions = new Integer[data.size()];
+
+		for (int i = 0; i < data.size(); i++) {
+			Node node = this.root;
+			while (!node.is_leaf()) {
+				node = node.children[node.splitter.find_closest_branch(data.get_series(i))];
+			}
+			predictions[i] = node.label();
 		}
 
-		return node.label();
-	}	
+		return predictions;
+	}
 
 	
 	public int getTreeID() {
@@ -251,15 +255,7 @@ public class ProximityTree{
 		
 		public void train(Dataset data) throws Exception {
 //			System.out.println(this.node_depth + ":   " + (this.parent == null ? "r" : this.parent.node_id)  +"->"+ this.node_id +":"+ data.toString());
-			
-			// Get random interval for the node
-			int min_len = (int)((double) data.size() * 1.0/4.0);
-			int max_len = data.size();
 
-			int len = AppContext.getRand().nextInt(max_len - min_len) + min_len;
-			int start = AppContext.getRand().nextInt(max_len - len);
-			
-			
 			//Debugging check
 			if (data == null || data.size() == 0) {
 				throw new Exception("possible bug: empty node found");
@@ -273,17 +269,24 @@ public class ProximityTree{
 				return;
 			}
 
-			this.splitter = new Splitter(this);
+			// Get random interval for the node
+			int min_len = Math.max(data.length() / 10, 1);
+			int max_len = data.length();
+
+			int len = AppContext.getRand().nextInt(max_len - min_len) + min_len;
+			int start = AppContext.getRand().nextInt(max_len - len);
+
+			this.splitter = new Splitter(this, start, len);
 						
 			Dataset[] best_splits = splitter.find_best_split(data);
+			
 			this.children = new Node[best_splits.length];
 			for (int i = 0; i < children.length; i++) {
 				this.children[i] = new Node(this, i, ++tree.node_counter, tree);
 			}
 
 			for (int i = 0; i < best_splits.length; i++) {
-
-				this.children[i].train(best_splits[i]);
+					this.children[i].train(best_splits[i]);
 			}
 		}
 

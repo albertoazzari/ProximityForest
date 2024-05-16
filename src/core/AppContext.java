@@ -43,8 +43,8 @@ public class AppContext {
 	public static boolean target_column_is_first = true;
 
 
-	public static int num_repeats = 1;
-	public static int num_trees = 1;
+	public static int num_repeats = 10;
+	public static int num_trees = 10;
 	public static int num_candidates_per_split = 1;
 	public static boolean random_dm_per_node = true;
 	public static boolean shuffle_dataset = false;

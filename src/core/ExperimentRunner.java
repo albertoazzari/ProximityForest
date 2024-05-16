@@ -59,7 +59,7 @@ public class ExperimentRunner {
 
 		//setup environment
 		File training_file = new File(AppContext.training_file);
-		String datasetName = training_file.getName().replaceAll("_TRAIN.txt", "");	//this is just some quick fix for UCR datasets
+		String datasetName = training_file.getName().replaceAll("_TRAIN.tsv", "");	//this is just some quick fix for UCR datasets
 		AppContext.setDatasetName(datasetName);
 		
 		PrintUtilities.printConfiguration();
@@ -71,7 +71,8 @@ public class ExperimentRunner {
 			System.out.println("Shuffling the training set...");
 			train_data.shuffle();
 		}
-				
+		
+		double mean_acc = 0.0;
 		
 		for (int i = 0; i < AppContext.num_repeats; i++) {
 			
@@ -83,13 +84,14 @@ public class ExperimentRunner {
 			}
 
 			//create model
-			ProximityForest forest = new ProximityForest(i);
+			ProximityForest forest = new ProximityForest(i, true);
 			
 			//train model
 			forest.train(train_data);
 			
 			//test model
 			ProximityForestResult result = forest.test(test_data);
+			mean_acc += result.accuracy;
 	
 			//print and export resultS
 			result.printResults(datasetName, i, "");
@@ -104,6 +106,7 @@ public class ExperimentRunner {
 			}
 			
 		}
+		System.out.println("Mean Accuracy: " + mean_acc/AppContext.num_repeats);
 		
 	}
 

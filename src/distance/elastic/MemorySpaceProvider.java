@@ -13,19 +13,18 @@ public class MemorySpaceProvider {
 	
 	
 	private MemorySpaceProvider(int length){
-		int nThreads = Runtime.getRuntime().availableProcessors();
 		this.size = length+10;//+10 to be sure we have enough
 		dblMatrices = new ConcurrentLinkedQueue<>();
 		intMatrices = new ConcurrentLinkedQueue<>();
 		dblArrays = new ConcurrentLinkedQueue<>();
 //		System.out.println("Creating memory space provider with size="+size);
-		for (int i = 0; i < 2*nThreads;i++) {
-			dblMatrices.add(new double[size][size]);
-			intMatrices.add(new int[size][size]);
-		}
-		for (int i = 0; i < 10*nThreads; i++) {
-			dblArrays.add(new double[size]);
-		}
+		// for (int i = 0; i < 2*nThreads;i++) {
+		// 	dblMatrices.add(new double[size][size]);
+		// 	intMatrices.add(new int[size][size]);
+		// }
+		// for (int i = 0; i < 10*nThreads; i++) {
+		// 	dblArrays.add(new double[size]);
+		// }
 		
 	}
 
@@ -52,27 +51,51 @@ public class MemorySpaceProvider {
 	}
 	
 	public double[][] getDoubleMatrix(){
-		return dblMatrices.poll();
+		double [][] m = dblMatrices.poll();
+		if (m==null) {
+			m = new double[size][size];
+		}
+		return m;
 	}
 	
 	public void returnDoubleMatrix(double[][]m){
-		dblMatrices.add(m);
+		synchronized(this) {
+			if (m.length==size) {
+				dblMatrices.add(m);
+			}
+		}
 	}
 	
 	public int[][] getIntMatrix(){
-		return intMatrices.poll();
+		int [][] m = intMatrices.poll();
+		if (m==null) {
+			m = new int[size][size];
+		}
+		return m;
 	}
 	
 	public void returnIntMatrix(int[][]m){
-		intMatrices.add(m);
+		synchronized(this) {
+			if (m.length==size) {
+				intMatrices.add(m);
+			}
+		}
 	}
 	
 	public double[] getDoubleArray(){
-		return dblArrays.poll();
+		double [] m = dblArrays.poll();
+		if (m==null) {
+			m = new double[size];
+		}
+		return m;
 	}
 	
 	public void returnDoubleArray(double[]t){
-		dblArrays.add(t);
+		synchronized(this) {
+			if (t.length==size) {
+				dblArrays.add(t);
+			}
+		}
 	}
 
 }

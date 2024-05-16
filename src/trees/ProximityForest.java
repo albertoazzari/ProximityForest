@@ -1,12 +1,18 @@
 package trees;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import core.AppContext;
 import core.ProximityForestResult;
 import core.contracts.Dataset;
 import util.PrintUtilities;
+import java.util.concurrent.*;
 
 /**
  * 
@@ -23,10 +29,11 @@ public class ProximityForest implements Serializable{
 	private static final long serialVersionUID = -1183368028217094381L;
 	protected transient ProximityForestResult result;
 	protected int forest_id;
+	protected boolean bootstrap;
 	protected ProximityTree trees[];
 	public String prefix;
 	
-	int[] num_votes;
+	Integer[][] num_votes;
 	List<Integer> max_voted_classes;
 	
 	public ProximityForest(int forest_id) {
@@ -39,121 +46,159 @@ public class ProximityForest implements Serializable{
 			trees[i] = new ProximityTree(i, this);
 		}
 
+		this.bootstrap = false;
+
 	}
-	
+
+	public ProximityForest(int forest_id, boolean bootstrap) {
+		this.result = new ProximityForestResult(this);
+		
+		this.forest_id = forest_id;
+		this.trees = new ProximityTree[AppContext.num_trees];
+		
+		for (int i = 0; i < AppContext.num_trees; i++) {
+			trees[i] = new ProximityTree(i, this);
+		}
+
+		this.bootstrap = bootstrap;
+
+	}
+
 	public void train(Dataset train_data) throws Exception {
 		result.startTimeTrain = System.nanoTime();
-
+	
+		ExecutorService executor = Executors.newFixedThreadPool(AppContext.num_trees);
+		List<Future<?>> futures = new ArrayList<>();
+	
 		for (int i = 0; i < AppContext.num_trees; i++) {
-			trees[i].train(train_data);
-			
-			if (AppContext.verbosity > 0) {
-				System.out.print(i+".");
-				if (AppContext.verbosity > 1) {
-					PrintUtilities.printMemoryUsage(true);	
-					if ((i+1) % 20 == 0) {
-						System.out.println();
+			final int treeIndex = i;
+			futures.add(executor.submit(() -> {
+				try {
+					// synchronized (trees) { // Synchronize access to the trees array
+					// 	trees[treeIndex].train(train_data.deep_clone());
+					// }
+					if (this.bootstrap) {
+						trees[treeIndex].train(train_data.bootstrap(AppContext.getRand()));
+					} else {
+						trees[treeIndex].train(train_data);
 					}
-				}		
-			}
-
+	
+					if (AppContext.verbosity > 0) {
+						synchronized (System.out) {
+							System.out.print(treeIndex + ".");
+							if (AppContext.verbosity > 1) {
+								PrintUtilities.printMemoryUsage(true);
+								if ((treeIndex + 1) % 20 == 0) {
+									System.out.println();
+								}
+							}
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					throw new RuntimeException("Exception while training tree " + treeIndex, e);
+				}
+			}));
 		}
-		
+	
+		executor.shutdown();
+		try {
+			if (!executor.awaitTermination((long)1e5, TimeUnit.DAYS)) {
+				executor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			executor.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
+	
 		result.endTimeTrain = System.nanoTime();
 		result.elapsedTimeTrain = result.endTimeTrain - result.startTimeTrain;
-		
-		if (AppContext.verbosity > 0) {
-			System.out.print("\n");				
-		}
-		
-//		System.gc();
-		if (AppContext.verbosity > 0) {
-			PrintUtilities.printMemoryUsage();	
-		}
-	
 	}
 	
-	//ASSUMES CLASS labels HAVE BEEN reordered to start from 0 and contiguous
 	public ProximityForestResult test(Dataset test_data) throws Exception {
 		result.startTimeTest = System.nanoTime();
-		
-		num_votes = new int[test_data._get_initial_class_labels().size()];
-		max_voted_classes = new ArrayList<Integer>();		
-		
-		int predicted_class;
+
+		num_votes = new Integer[AppContext.num_trees][test_data.size()];
+
+		ExecutorService executor = Executors.newFixedThreadPool(AppContext.num_trees);
+		List<Future<?>> futures = new ArrayList<>();
+	
+		for (int i = 0; i < AppContext.num_trees; i++) {
+			final int treeIndex = i;
+			futures.add(executor.submit(() -> {
+				try {
+					num_votes[treeIndex] = trees[treeIndex].predict(test_data);
+					
+					if (AppContext.verbosity > 0) {
+						synchronized (System.out) {
+							if (treeIndex % AppContext.print_test_progress_for_each_instances == 0) {
+								System.out.print("*");
+							}				
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					throw new RuntimeException("Exception while training tree " + treeIndex, e);
+				}
+			}));
+		}
+	
+		executor.shutdown();
+		try {
+			if (!executor.awaitTermination((long)1e5, TimeUnit.DAYS)) {
+				executor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			executor.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
 		int actual_class;
-		int size = test_data.size();
-		
-		for (int i=0; i < size; i++){
+		int predicted_class;
+		Integer [] votes_over_tree = new Integer[AppContext.num_trees];
+		for (int i=0; i < test_data.size(); i++) {
 			actual_class = test_data.get_class(i);
-			predicted_class = predict(test_data.get_series(i));
+			for (int j = 0; j < AppContext.num_trees; j++){
+				votes_over_tree[j] = num_votes[j][i];
+			}
+			predicted_class = majority_votes(votes_over_tree);
 			if (actual_class != predicted_class){
 				result.errors++;
 			}else{
 				result.correct++;
 			}
-			
-			if (AppContext.verbosity > 0) {
-				if (i % AppContext.print_test_progress_for_each_instances == 0) {
-					System.out.print("*");
-				}				
-			}
 		}
-		
+
+	
 		result.endTimeTest = System.nanoTime();
 		result.elapsedTimeTest = result.endTimeTest - result.startTimeTest;
-		
-		if (AppContext.verbosity > 0) {
-			System.out.println();
-		}
-		
-		
-		assert test_data.size() == result.errors + result.correct;		
+
 		result.accuracy  = ((double) result.correct) / test_data.size();
 		result.error_rate = 1 - result.accuracy;
 
-        return result;
+		return result;
 	}
 	
-	public Integer predict(double[] query) throws Exception {
-		//ASSUMES CLASSES HAVE BEEN REMAPPED, start from 0
-		int label;
-		int max_vote_count = -1;
-		int temp_count = 0;
-		
-		for (int i = 0; i < num_votes.length; i++) {
-			num_votes[i] = 0;
-		}
-		max_voted_classes.clear();
+	public Integer majority_votes(Integer[] trees_prediction) {
+		// Map to store the count of each label
+		Map<Integer, Integer> labelCountMap = new HashMap<>();
 
-		for (int i = 0; i < trees.length; i++) {
-			label = trees[i].predict(query);
-			
-			num_votes[label]++;
+		// Count the occurrences of each label
+		for (Integer label : trees_prediction) {
+			labelCountMap.put(label, labelCountMap.getOrDefault(label, 0) + 1);
 		}
-		
-//			System.out.println("vote counting using uni dist");
-			
-		for (int i = 0; i < num_votes.length; i++) {
-			temp_count = num_votes[i];
-			
-			if (temp_count > max_vote_count) {
-				max_vote_count = temp_count;
-				max_voted_classes.clear();
-				max_voted_classes.add(i);
-			}else if (temp_count == max_vote_count) {
-				max_voted_classes.add(i);
+
+		// Find the label with the maximum count
+		int maxCount = 0;
+		Integer majorityLabel = null;
+		for (Map.Entry<Integer, Integer> entry : labelCountMap.entrySet()) {
+			int count = entry.getValue();
+			if (count > maxCount) {
+				maxCount = count;
+				majorityLabel = entry.getKey();
 			}
 		}
-		
-		int r = AppContext.getRand().nextInt(max_voted_classes.size());
-		
-		//collecting some stats
-		if (max_voted_classes.size() > 1) {
-			this.result.majority_vote_match_count++;
-		}
-		
-		return max_voted_classes.get(r);
+
+		return majorityLabel;
 	}
 	
 	public ProximityTree[] getTrees() {

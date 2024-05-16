@@ -165,7 +165,7 @@ public class ProximityForestResult {
         //the prefix REPEAT is added to this comma separated line easily use grep from command line to filter outputs to a csv file
         //just a quick method to filter important info while in command line
         
-        String pre = "REPEAT:" + (experiment_id+1) +" ,";
+        String pre = "REPEAT:" + (experiment_id+1) +", ";
 		System.out.print(pre + datasetName);        
 		System.out.print(", " + accuracy);
 		System.out.print(", " + elapsedTimeTrain /1e6);

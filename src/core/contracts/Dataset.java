@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import javax.xml.crypto.Data;
+
 import datasets.ListDataset;
 
 /**
@@ -19,6 +21,8 @@ public interface Dataset {
 	public int size();
 	
 	public int length();
+
+	public Dataset bootstrap(Random rand);
 		
 //	public void add(int label, double[] series);
 	

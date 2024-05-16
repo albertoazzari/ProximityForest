@@ -40,6 +40,7 @@ public class TWE {
 		double[][]D = MemorySpaceProvider.getInstance(maxLength+1).getDoubleMatrix();
 		double[]Di1 = MemorySpaceProvider.getInstance(maxLength+1).getDoubleArray();
 		double[]Dj1 = MemorySpaceProvider.getInstance(maxLength+1).getDoubleArray();
+		
 //		double[][] D = MemoryManager.getInstance().getDoubleMatrix(0);
 //		double[] Di1 = MemoryManager.getInstance().getDoubleArray(0);
 //		double[] Dj1 = MemoryManager.getInstance().getDoubleArray(1);

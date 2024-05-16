@@ -1,6 +1,7 @@
 package datasets;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -49,6 +50,7 @@ public class ListDataset implements Dataset{
 	public int size() {
 		return this.data.size();
 	}
+	
 	public int length() {
 		//Note length for empty dataset may result in either 0, or length used in the constructor
 		return this.data.isEmpty() ? length : this.data.get(0).length;
@@ -139,6 +141,19 @@ public class ListDataset implements Dataset{
 		}
 		
 		return split;
+	}
+
+	public ListDataset bootstrap(Random rand) {
+		ListDataset bootstrapped = new ListDataset(this.size(), this.length());
+		int size = this.size();
+		int index;
+		
+		for (int i = 0; i < size; i++) {
+			index = rand.nextInt(size);
+			bootstrapped.add(this.labels.get(index), this.data.get(index));
+		}
+		
+		return bootstrapped;
 	}
 	
 //	public Map<Integer, DatasetIndex> get_classes_as_indices() {
@@ -294,11 +309,11 @@ public class ListDataset implements Dataset{
 		return null;
 	}
 	
-	@Override
+	@Override 
 	public ListDataset deep_clone() {
 		// TODO Auto-generated method stub
 		return null;
-	}	
+	}
 
 	@Override
 	public ListDataset sort_on(int timestamp) {
