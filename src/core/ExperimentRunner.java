@@ -17,7 +17,7 @@ public class ExperimentRunner {
 	
 	ListDataset train_data;
 	ListDataset test_data;
-	private static String csvSeparatpr = ",";
+	private static String csvSeparatpr = "\t";
 	
 	public ExperimentRunner(){
 		

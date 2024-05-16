@@ -49,7 +49,6 @@ public class ListDataset implements Dataset{
 	public int size() {
 		return this.data.size();
 	}
-	
 	public int length() {
 		//Note length for empty dataset may result in either 0, or length used in the constructor
 		return this.data.isEmpty() ? length : this.data.get(0).length;

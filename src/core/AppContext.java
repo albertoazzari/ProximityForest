@@ -36,8 +36,8 @@ public class AppContext {
 	public static int verbosity = 0; //0, 1, 2 
 	public static int export_level = 1; //0, 1, 2 
 
-	public static String training_file = "E:/data/ucr/cleaned/ItalyPowerDemand/ItalyPowerDemand_TRAIN.csv";
-	public static String testing_file = "E:/data/ucr/cleaned/ItalyPowerDemand/ItalyPowerDemand_TEST.csv";
+	public static String training_file = "/media/aazzari/UCRArchive_2018/ItalyPowerDemand/ItalyPowerDemand_TRAIN.tsv";
+	public static String testing_file = "/media/aazzari/UCRArchive_2018/ItalyPowerDemand/ItalyPowerDemand_TEST.tsv";
 	public static String output_dir = "output/";
 	public static boolean csv_has_header = false;
 	public static boolean target_column_is_first = true;

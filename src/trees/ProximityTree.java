@@ -252,6 +252,14 @@ public class ProximityTree{
 		public void train(Dataset data) throws Exception {
 //			System.out.println(this.node_depth + ":   " + (this.parent == null ? "r" : this.parent.node_id)  +"->"+ this.node_id +":"+ data.toString());
 			
+			// Get random interval for the node
+			int min_len = (int)((double) data.size() * 1.0/4.0);
+			int max_len = data.size();
+
+			int len = AppContext.getRand().nextInt(max_len - min_len) + min_len;
+			int start = AppContext.getRand().nextInt(max_len - len);
+			
+			
 			//Debugging check
 			if (data == null || data.size() == 0) {
 				throw new Exception("possible bug: empty node found");
